@@ -1,0 +1,7 @@
+Cambios
+
+Launcher (v1.0.3):
+- Eliminación automatica de archivos innecesarios
+
+Juego (v1.0.3):
+- Mini actualización de compatibilidad
