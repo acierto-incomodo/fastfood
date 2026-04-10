@@ -1,5 +1,5 @@
 ./Clear.ps1
 cp main.py launcher_win.py
-python -m PyInstaller --onefile --windowed --noconsole --icon=hollow_knight_silksong.ico launcher_win.py
-python -m PyInstaller --onefile --windowed --noconsole --icon=hollow_knight_silksong.ico installer_updater.py
+python -m PyInstaller --onefile --windowed --noconsole --icon=fastfood.ico launcher_win.py
+python -m PyInstaller --onefile --windowed --noconsole --icon=fastfood.ico installer_updater.py
 echo 1.0.0 > version_win_launcher.txt

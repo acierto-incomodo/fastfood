@@ -1,9 +1,9 @@
 [Setup]
-AppName=Fast Food Simulator by StormGamesStudios
-AppVersion=1.0.3
-DefaultDirName={userappdata}\StormGamesStudios\NewGameDir\FastFood
+AppName=Fast Food by StormGamesStudios
+AppVersion=1.0.5
+DefaultDirName={userappdata}\StormGamesStudios\NewGameDir\FastFoodGame
 DefaultGroupName=StormGamesStudios
-OutputDir=C:\Users\mapsp\Documents\GitHub\fastfood\output
+OutputDir=C:\Users\melio\Documents\GitHub\fastfood\output
 OutputBaseFilename=FastFood_Launcher_Installer
 Compression=lzma
 SolidCompression=yes
@@ -11,32 +11,126 @@ AppCopyright=Copyright © 2025 StormGamesStudios. All rights reserved.
 VersionInfoCompany=StormGamesStudios
 AppPublisher=StormGamesStudios
 SetupIconFile=fastfood.ico
-VersionInfoVersion=1.0.3.0
-DisableDirPage=yes
+VersionInfoVersion=1.0.5.0
 DisableProgramGroupPage=yes
+; Habilitar selección de carpeta
+DisableDirPage=yes
 
 [Files]
-; Archivos del lanzador
-Source: "C:\Users\mapsp\Documents\GitHub\fastfood\dist\installer_updater.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\Users\mapsp\Documents\GitHub\fastfood\fastfood.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\Users\mapsp\Documents\GitHub\fastfood\fastfood.png"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\melio\Documents\GitHub\fastfood\dist\installer_updater.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\melio\Documents\GitHub\fastfood\fastfood.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\melio\Documents\GitHub\fastfood\fastfood.png"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-; Acceso directo en el escritorio
-; Name: "{userdesktop}\Fast Food Simulator"; Filename: "{app}\installer_updater.exe"; IconFilename: "{app}\fastfood.ico"; Comment: "Lanzador de Fast Food Simulator"; WorkingDir: "{app}"
-
-; Acceso directo en el menú de inicio dentro de la carpeta StormGamesStudios
-Name: "{commonprograms}\StormGamesStudios\Fast Food Simulator"; Filename: "{app}\installer_updater.exe"; IconFilename: "{app}\fastfood.ico"; Comment: "Lanzador de Fast Food Simulator"; WorkingDir: "{app}"
-Name: "{commonprograms}\StormGamesStudios\Desinstalar Fast Food Simulator"; Filename: "{uninstallexe}"; IconFilename: "{app}\fastfood.ico"; Comment: "Desinstalar Fast Food Simulator"
+Name: "{commonprograms}\StormGamesStudios\Fast Food"; Filename: "{app}\installer_updater.exe"; IconFilename: "{app}\fastfood.ico"; Comment: "Lanzador de Fast Food"; WorkingDir: "{app}"
+Name: "{commonprograms}\StormGamesStudios\Desinstalar Fast Food"; Filename: "{uninstallexe}"; IconFilename: "{app}\fastfood.ico"; Comment: "Desinstalar Fast Food"
 
 [Registry]
-; Guardar ruta de instalación para poder desinstalar
-Root: HKCU; Subkey: "Software\Fast Food Simulator"; ValueType: string; ValueName: "Install_Dir"; ValueData: "{app}"
+Root: HKCU; Subkey: "Software\Fast Food"; ValueType: string; ValueName: "Install_Dir"; ValueData: "{app}"
 
 [UninstallDelete]
-; Eliminar carpeta del appdata y acceso directo
 Type: filesandordirs; Name: "{app}"
 
 [Run]
-; Ejecutar el lanzador después de la instalación
-Filename: "{app}\installer_updater.exe"; Description: "Ejecutar Fast Food Simulator"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\installer_updater.exe"; Description: "Ejecutar Fast Food"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function IsDirectoryEmpty(DirPath: String): Boolean;
+var
+  FindRec: TFindRec;
+begin
+  Result := True;
+  if DirExists(DirPath) then
+  begin
+    if FindFirst(DirPath + '\*', FindRec) then
+    begin
+      try
+        repeat
+          if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+          begin
+            Result := False;
+            Break;
+          end;
+        until not FindNext(FindRec);
+      finally
+        FindClose(FindRec);
+      end;
+    end;
+  end;
+end;
+
+procedure RunUninstaller(DirPath: String);
+var
+  FindRec: TFindRec;
+  ResultCode: Integer;
+  Attempts: Integer;
+begin
+  if DirExists(DirPath) then
+  begin
+    // Busca cualquier archivo que coincida con unins*.exe (unins000.exe, unins001.exe, etc.)
+    if FindFirst(DirPath + '\unins*.exe', FindRec) then
+    begin
+      try
+        repeat
+          // Ejecutar el desinstalador de forma muy silenciosa y esperar a que termine
+          Exec(DirPath + '\' + FindRec.Name, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        until not FindNext(FindRec);
+      finally
+        FindClose(FindRec);
+      end;
+    end;
+
+    // Esperar hasta que la carpeta esté vacía (máximo 5 segundos de espera activa)
+    Attempts := 0;
+    while (not IsDirectoryEmpty(DirPath)) and (Attempts < 10) do
+    begin
+      Sleep(500); // Esperar 500ms antes de volver a comprobar
+      Attempts := Attempts + 1;
+      
+      // Intentar borrar lo que quede (por si son archivos de log o restos que el desinstalador no quitó)
+      if Attempts > 5 then
+      begin
+        DelTree(DirPath, True, True, True);
+      end;
+    end;
+  end;
+end;
+
+procedure UninstallOldVersion();
+begin
+  // 1. Revisar la ruta de la versión anterior específica
+  RunUninstaller(ExpandConstant('{userappdata}\StormGamesStudios\NewGameDir\fastfood'));
+  
+  // 2. Revisar la ruta donde se va a instalar actualmente (por si es una reinstalación/actualización)
+  RunUninstaller(ExpandConstant('{app}'));
+end;
+
+procedure CloseApp();
+var
+  ResultCode: Integer;
+begin
+  // Cierra el actualizador y el launcher si están abiertos
+  Exec('taskkill', '/F /IM installer_updater.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('taskkill', '/F /IM win_launcher.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('taskkill', '/F /IM "Fast Food Simulator.exe"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('taskkill', '/F /IM ""', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  // Durante la instalación, cierra cualquier instancia abierta
+  if CurStep = ssInstall then
+  begin
+    CloseApp();
+    UninstallOldVersion();
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  // Durante la desinstalación, cierra cualquier instancia abierta
+  if CurUninstallStep = usUninstall then
+  begin
+    CloseApp();
+  end;
+end;

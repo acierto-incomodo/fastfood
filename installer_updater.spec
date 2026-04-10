@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['hollow_knight_silksong.ico'],
+    icon=['fastfood.ico'],
 )
